@@ -18,6 +18,14 @@ Decision points follow the structural rule of the other languages:
 - each clause of an anonymous function with more than one clause
 - each clause of a multi-clause function, the same as a `case`
 
+An OTP or LiveView callback (`handle_event`, `handle_info`, `handle_call`,
+`handle_cast`, `handle_continue`, `handle_async`) is a set of independent
+handlers, not one decision tree. Each clause whose first argument is a
+literal (a string, an atom, or a tuple that starts with an atom) is its own
+entry, named like `handle_event/3 "save"` or `handle_info/2 :tick`, the way a
+TypeScript route callback is `GET /users`. Clauses with the same literal
+share an entry. The other clauses stay under the plain `name/arity`.
+
 The namespace is the module. Nested `defmodule` names join with a dot. A
 `defimpl` is `Protocol.Type`, with the enclosing module as the type when
 `for:` is absent. Code outside any module takes its namespace from the path.
@@ -39,6 +47,15 @@ _DEFINERS = {"def", "defp", "defmacro", "defmacrop"}
 _LOGIC = {"and", "or", "&&", "||", "when"}
 _BRANCHES = {"if", "unless"}
 _CLAUSE_BLOCKS = {"do_block", "else_block", "rescue_block", "catch_block", "after_block"}
+_CALLBACKS = {
+    "handle_event",
+    "handle_info",
+    "handle_call",
+    "handle_cast",
+    "handle_continue",
+    "handle_async",
+}
+_ATOMS = {"atom", "quoted_atom"}
 
 
 def _call_name(data: bytes, node) -> str | None:
@@ -98,21 +115,62 @@ def _clause_decisions(data: bytes, clause) -> int:
     return sum(_decisions(data, node) for node in descendants(clause))
 
 
-def _head(data: bytes, definition) -> tuple[str, int] | None:
-    """`(name, arity)` of a definition, or None for an unquoted or operator name."""
+def _without(node, operator: str):
+    """The left side of `left <operator> right`, or the node itself."""
 
+    if node.type == "binary_operator" and _operator(node) == operator:
+        return node.named_children[0]
+    return node
+
+
+def _head_call(definition):
     args = _arguments(definition)
     if not args:
         return None
-    head = args[0]
-    if head.type == "binary_operator" and _operator(head) == "when":
-        head = head.named_children[0]
+    return _without(args[0], "when")
+
+
+def _head(data: bytes, definition) -> tuple[str, int] | None:
+    """`(name, arity)` of a definition, or None for an unquoted or operator name."""
+
+    head = _head_call(definition)
+    if head is None:
+        return None
     if head.type == "identifier":
         return node_text(data, head), 0
     name = _call_name(data, head)
     if name is None:
         return None
     return name, len(_arguments(head))
+
+
+def _literal(data: bytes, pattern) -> str | None:
+    pattern = _without(pattern, "=")
+    if pattern.type in _ATOMS:
+        return node_text(data, pattern)
+    if pattern.type == "string" and child_of_type(pattern, "interpolation") is None:
+        return node_text(data, pattern)
+    if pattern.type == "tuple" and pattern.named_children:
+        first = pattern.named_children[0]
+        return node_text(data, first) if first.type in _ATOMS else None
+    return None
+
+
+def _dispatch_key(data: bytes, definition, name: str) -> str | None:
+    """The literal a callback clause handles, such as `"save"` or `:tick`."""
+
+    if name not in _CALLBACKS:
+        return None
+    params = _arguments(_head_call(definition))
+    if not params:
+        return None
+    return _literal(data, params[0])
+
+
+def _entry_name(data: bytes, definition, head: tuple[str, int]) -> str:
+    name, arity = head
+    key = _dispatch_key(data, definition, name)
+    return f"{name}/{arity} {key}" if key else f"{name}/{arity}"
 
 
 def _has_body(definition) -> bool:
@@ -189,7 +247,7 @@ def _group(data: bytes, root) -> dict[tuple[str, str], list]:
         head = _head(data, node)
         if head is None:
             continue
-        key = (_module_of(data, node), f"{head[0]}/{head[1]}")
+        key = (_module_of(data, node), _entry_name(data, node, head))
         groups.setdefault(key, []).append(node)
     return groups
 

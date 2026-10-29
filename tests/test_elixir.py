@@ -215,3 +215,66 @@ def test_help_lists_elixir_extension_coverage_and_snapshot_keys():
     assert "Elixir (.ex)" in HELP
     assert "Elixir       mix coveralls.lcov" in HELP
     assert "Elixir       the module, and name/arity" in HELP
+
+
+def test_callback_clauses_that_dispatch_on_a_literal_are_separate_entries():
+    source = """defmodule Demo.Live do
+  def handle_event("save", params, socket) do
+    if params["ok"], do: {:noreply, socket}, else: {:noreply, socket}
+  end
+
+  def handle_event("delete", %{"id" => id}, socket) when id != nil do
+    {:noreply, socket}
+  end
+
+  def handle_event("save", _params, socket), do: {:noreply, socket}
+
+  def handle_event(event, _params, socket) do
+    case event do
+      "a" -> {:noreply, socket}
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_info({:tick, ref} = _msg, state), do: {:noreply, {ref, state}}
+  def handle_info(:"quoted atom", state), do: {:noreply, state}
+  def handle_info("a#{1}", state), do: {:noreply, state}
+  def handle_info(%{event: "x"}, state), do: {:noreply, state}
+  def handle_call(:get, _from, state), do: {:reply, state, state}
+end
+"""
+    assert [row[1:3] for row in _rows(source)] == [
+        # "save" has two clauses: 1 + 2 clauses + if
+        ('handle_event/3 "save"', 4),
+        # 1 + when guard
+        ('handle_event/3 "delete"', 2),
+        # the catch-all stays under the plain name: 1 + 2 case clauses
+        ("handle_event/3", 3),
+        ("handle_info/2 :tick", 1),
+        ('handle_info/2 :"quoted atom"', 1),
+        # an interpolated string and a map are not literals: 1 + 2 clauses
+        ("handle_info/2", 3),
+        ("handle_call/3 :get", 1),
+    ]
+
+
+def test_a_split_entry_spans_its_first_to_last_clause():
+    source = """defmodule Demo.Live do
+  def handle_event("a", _p, s), do: s
+  def handle_event("b", _p, s), do: s
+  def handle_event("a", p, s), do: {p, s}
+end
+"""
+    assert [(row[1], row[3], row[4]) for row in _rows(source)] == [
+        ('handle_event/3 "a"', 2, 4),
+        ('handle_event/3 "b"', 3, 3),
+    ]
+
+
+def test_ordinary_multi_clause_functions_are_not_split():
+    source = """defmodule Demo do
+  def kind(:a), do: 1
+  def kind(:b), do: 2
+end
+"""
+    assert [row[1:3] for row in _rows(source)] == [("kind/1", 3)]

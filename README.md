@@ -60,7 +60,7 @@ uml-viewer groups entries by `:namespace` and joins each operation on `:name`. `
 | TypeScript | the dotted module path, or `module.Class` | the function or method name |
 | Rust | `crate::module`, or `crate::module::Type` | the function or method name |
 | Python | the dotted module path, or `module.Class` | the function or method name |
-| Elixir | the module, `Outer.Inner`, or `Protocol.Type` for a `defimpl` | `name/arity` |
+| Elixir | the module, `Outer.Inner`, or `Protocol.Type` for a `defimpl` | `name/arity`, or `handle_event/3 "save"` for a callback clause |
 
 Rename or move is a new entry. There is no identity matching across runs.
 
@@ -78,7 +78,7 @@ Rust counts `if`, loops, each `match` arm, `?`, and `&&` / `||`. `mod tests` is 
 
 Python counts `if`, `elif`, `for`, `while`, `except`, each `match` case, a comprehension filter, a conditional expression, and each `and` / `or`. Nested functions stay inside the enclosing function. Coverage is LCOV from `coverage.py`, running pytest when the project uses it and `unittest` otherwise. `coverage` and `pytest` are installed into the project's interpreter when they are missing.
 
-Elixir scores `.ex` files; `.exs` scripts, `deps`, and `_build` are skipped. Every clause of `def`, `defp`, `defmacro`, or `defmacrop` with the same name and arity is one entry named `name/arity`, and each clause of a multi-clause function counts as a decision, the same as a `case` clause. It also counts `if`, `unless`, each `and` / `or` / `&&` / `||` / `when` guard, each clause of `case`, `cond`, `receive`, and `receive ... after`, each `rescue` / `catch` / `with ... else` clause, each `<-` of `with`, each generator and filter of `for`, and each clause of a multi-clause `fn`. A bodiless head (a protocol callback or a default-argument head) is not a clause, and a definition generated inside another one, such as in a `quote`, stays with the enclosing definition. Coverage is LCOV line hits from each `.ex` file's nearest `mix.exs`.
+Elixir scores `.ex` files; `.exs` scripts, `deps`, and `_build` are skipped. Every clause of `def`, `defp`, `defmacro`, or `defmacrop` with the same name and arity is one entry named `name/arity`, and each clause of a multi-clause function counts as a decision, the same as a `case` clause. It also counts `if`, `unless`, each `and` / `or` / `&&` / `||` / `when` guard, each clause of `case`, `cond`, `receive`, and `receive ... after`, each `rescue` / `catch` / `with ... else` clause, each `<-` of `with`, each generator and filter of `for`, and each clause of a multi-clause `fn`. OTP and LiveView callbacks (`handle_event`, `handle_info`, `handle_call`, `handle_cast`, `handle_continue`, `handle_async`) are independent handlers, so each clause whose first argument is a literal — a string, an atom, or a tuple starting with an atom — is its own entry, such as `handle_event/3 "save"` or `handle_info/2 :tick`, the way an Express callback is `GET /users`; the remaining clauses stay under `handle_event/3`. A bodiless head (a protocol callback or a default-argument head) is not a clause, and a definition generated inside another one, such as in a `quote`, stays with the enclosing definition. Coverage is LCOV line hits from each `.ex` file's nearest `mix.exs`.
 
 ## Coverage commands
 

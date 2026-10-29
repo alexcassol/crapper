@@ -1,6 +1,12 @@
 # crapper
 
 > Fork of [unclebob/crapper](https://github.com/unclebob/crapper) that adds Elixir. Everything else follows upstream.
+>
+> ```bash
+> git clone https://github.com/alexcassol/crapper.git ~/Dev/unclebob/crapper
+> export PATH="$HOME/Dev/unclebob/crapper:$PATH"
+> cd your_mix_project && crapper lib/
+> ```
 
 CRAP scores for Clojure, Java, Go, TypeScript, Rust, Python, and Elixir. One run detects the language of each source file, applies that language's complexity and coverage rules, and writes the snapshot [uml-viewer](https://github.com/unclebob/uml-viewer) already reads.
 

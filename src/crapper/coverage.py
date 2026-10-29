@@ -1,7 +1,7 @@
 """Load Cloverage, LCOV, JaCoCo, and Go coverage profiles.
 
 Clojure prefers Cloverage's per-line form counts, then LCOV. Java uses JaCoCo
-instruction counters. Go uses statement profiles. LCOV scores a function by
+instruction counters. Go uses statement profiles. Elixir arrives as LCOV line hits. LCOV scores a function by
 its BRDA branch records when it has any, and by line hits otherwise.
 `percent_for` returns None when the file is absent; analysis turns that into 0%.
 """

@@ -207,3 +207,11 @@ def test_ex_files_are_elixir_and_scripts_build_output_and_deps_are_not(tmp_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("defmodule X do\nend\n", encoding="utf-8")
     assert iter_source_files([tmp_path]) == [source.resolve()]
+
+
+def test_help_lists_elixir_extension_coverage_and_snapshot_keys():
+    from crapper.cli import HELP
+
+    assert "Elixir (.ex)" in HELP
+    assert "Elixir       mix coveralls.lcov" in HELP
+    assert "Elixir       the module, and name/arity" in HELP

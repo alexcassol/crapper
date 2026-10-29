@@ -8,6 +8,12 @@
 
 [data, out] = System.argv()
 
+# :cover prints a notice on import and on every analysis of imported data,
+# once per module. Its server inherits this group leader, so a silent one
+# keeps a large project's run readable. Real failures still raise.
+{:ok, quiet} = StringIO.open("")
+Process.group_leader(self(), quiet)
+
 {:ok, _} = :cover.start()
 :ok = :cover.import(String.to_charlist(data))
 

@@ -154,7 +154,7 @@ def test_clojure_cleanup_keeps_the_elixir_report(tmp_path):
 
 
 @pytest.mark.skipif(shutil.which("mix") is None, reason="Elixir is not installed")
-def test_converter_scores_a_real_mix_project(tmp_path):
+def test_converter_scores_a_real_mix_project(tmp_path, capfd):
     _write(
         tmp_path,
         "mix.exs",
@@ -192,6 +192,7 @@ end
     )
     _write(tmp_path, "test/test_helper.exs", "ExUnit.start()\n")
     cover_elixir(tmp_path, [source])
+    assert "imported" not in capfd.readouterr().out
     entries = analyze_files([source], tmp_path, load_bundle(tmp_path))
     scores = {entry.name: (entry.complexity, round(entry.coverage, 1)) for entry in entries}
     assert scores == {"classify/1": (5, 66.7), "never/1": (2, 0.0)}

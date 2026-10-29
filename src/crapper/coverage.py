@@ -202,20 +202,29 @@ def coverage_percent(covered: int, total: int) -> float:
     return 100.0 * covered / total
 
 
-def percent_for_range(lines: dict[int, tuple[int, int]] | None, start: int, end: int) -> float | None:
-    if lines is None:
-        return None
+def _sum_hits(index: dict[int, tuple[int, int]], lines) -> tuple[int, int]:
     covered = 0
     total = 0
-    for line in range(start, end + 1):
-        entry = lines.get(line)
+    for line in lines:
+        entry = index.get(line)
         if entry is None:
             continue
         covered += entry[0]
         total += entry[1]
+    return covered, total
+
+
+def percent_for_lines(index: dict[int, tuple[int, int]] | None, lines) -> float | None:
+    if index is None:
+        return None
+    covered, total = _sum_hits(index, lines)
     if total == 0:
         return 0.0
     return coverage_percent(covered, total)
+
+
+def percent_for_range(lines: dict[int, tuple[int, int]] | None, start: int, end: int) -> float | None:
+    return percent_for_lines(lines, range(start, end + 1))
 
 
 def parse_form_coverage(html: str) -> dict[int, tuple[int, int]]:
@@ -278,23 +287,22 @@ def parse_lcov(text: str) -> dict[str, FileCoverage]:
     return out
 
 
-def branch_percent(record, start: int, end: int) -> float | None:
-    """Branch coverage for a function, or None when that span has no branches."""
+def branch_percent_for_lines(record, lines) -> float | None:
+    """Branch coverage on these lines, or None when they have no branches."""
 
     branches = getattr(record, "branches", None)
     if not branches:
         return None
-    covered = 0
-    total = 0
-    for line in range(start, end + 1):
-        entry = branches.get(line)
-        if entry is None:
-            continue
-        covered += entry[0]
-        total += entry[1]
+    covered, total = _sum_hits(branches, lines)
     if total == 0:
         return None
     return coverage_percent(covered, total)
+
+
+def branch_percent(record, start: int, end: int) -> float | None:
+    """Branch coverage for a function, or None when that span has no branches."""
+
+    return branch_percent_for_lines(record, range(start, end + 1))
 
 
 def parse_go_profile(text: str) -> dict[str, list[tuple[int, int, int, int]]]:
@@ -459,14 +467,17 @@ class CoverageBundle:
             )
         html = self._html_lines(function.path)
         if html is not None:
-            return percent_for_range(html, function.start_line, function.end_line)
+            return percent_for_lines(html, function.lines())
+        return self._lcov_percent(function)
+
+    def _lcov_percent(self, function: Function) -> float | None:
         record = self._lcov_lines(function.path)
         if record is None:
             return None
-        branched = branch_percent(record, function.start_line, function.end_line)
+        branched = branch_percent_for_lines(record, function.lines())
         if branched is not None:
             return branched
-        return percent_for_range(record, function.start_line, function.end_line)
+        return percent_for_lines(record, function.lines())
 
     def _html_lines(self, path: str) -> dict[int, tuple[int, int]] | None:
         return _lookup(self.form_html, path, self.source_parts)

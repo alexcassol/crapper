@@ -17,6 +17,15 @@ class Function:
     # Mutator uses the span to give a nested handler the sites inside it.
     start_byte: int = -1
     end_byte: int = -1
+    # (start, end) line spans of the clauses, when they need not be adjacent.
+    # Empty means the one span start_line..end_line.
+    line_ranges: tuple[tuple[int, int], ...] = ()
+
+    def lines(self) -> list[int]:
+        """Every source line that belongs to this function, in order."""
+
+        spans = self.line_ranges or ((self.start_line, self.end_line),)
+        return sorted({line for start, end in spans for line in range(start, end + 1)})
 
 
 @dataclass(frozen=True)

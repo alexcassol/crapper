@@ -272,6 +272,7 @@ def _function(data: bytes, key, nodes, path: str, source_root: str | None) -> Fu
         language="elixir",
         start_byte=min(node.start_byte for node in nodes),
         end_byte=max(node.end_byte for node in nodes),
+        line_ranges=tuple((start_line(node), end_line(node)) for node in nodes),
     )
 
 

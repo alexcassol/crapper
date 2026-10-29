@@ -196,3 +196,26 @@ end
     entries = analyze_files([source], tmp_path, load_bundle(tmp_path))
     scores = {entry.name: (entry.complexity, round(entry.coverage, 1)) for entry in entries}
     assert scores == {"classify/1": (5, 66.7), "never/1": (2, 0.0)}
+
+
+def test_interleaved_clauses_score_only_their_own_lines(tmp_path):
+    from crapper.coverage import CoverageBundle, parse_lcov
+
+    source = _write(
+        tmp_path,
+        "lib/live.ex",
+        """defmodule Demo.Live do
+  def handle_info(:a, s), do: s
+  def handle_info(:b, s), do: s
+  def handle_info(:a, s), do: s
+end
+""",
+    )
+    # :a runs on lines 2 and 4; :b's line 3 never runs.
+    lcov = "SF:lib/live.ex\nDA:2,1\nDA:3,0\nDA:4,1\nBRDA:3,0,0,0\nBRDA:3,0,1,0\nend_of_record\n"
+    bundle = CoverageBundle(lcov=parse_lcov(lcov))
+    entries = analyze_files([source], tmp_path, bundle)
+    assert {entry.name: entry.coverage for entry in entries} == {
+        "handle_info/2 :a": 100.0,
+        "handle_info/2 :b": 0.0,
+    }

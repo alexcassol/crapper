@@ -1,6 +1,8 @@
 # crapper
 
-CRAP scores for Clojure, Java, Go, TypeScript, Rust, and Python. One run detects the language of each source file, applies that language's complexity and coverage rules, and writes the snapshot [uml-viewer](https://github.com/unclebob/uml-viewer) already reads.
+> Fork of [unclebob/crapper](https://github.com/unclebob/crapper) that adds Elixir. Everything else follows upstream.
+
+CRAP scores for Clojure, Java, Go, TypeScript, Rust, Python, and Elixir. One run detects the language of each source file, applies that language's complexity and coverage rules, and writes the snapshot [uml-viewer](https://github.com/unclebob/uml-viewer) already reads.
 
 The formula is the one from [crap4clj](https://github.com/unclebob/crap4clj), [crap4java](https://github.com/unclebob/crap4java), and [crap4go](https://github.com/unclebob/crap4go):
 
@@ -16,7 +18,7 @@ CRAP = CC² × (1 − coverage)³ + CC
 ./crapper
 ```
 
-The first run creates `.venv` and installs the tool. From a project root it walks the tree, skips `test`, `spec`, `vendor`, `node_modules`, and `target`, and writes two results:
+The first run creates `.venv` and installs the tool. From a project root it walks the tree, skips `test`, `spec`, `vendor`, `node_modules`, `target`, `deps`, and `_build`, and writes two results:
 
 - a table on stdout, worst score first
 - `.metrics/crap.edn`, replaced on every successful analysis
@@ -52,6 +54,7 @@ uml-viewer groups entries by `:namespace` and joins each operation on `:name`. `
 | TypeScript | the dotted module path, or `module.Class` | the function or method name |
 | Rust | `crate::module`, or `crate::module::Type` | the function or method name |
 | Python | the dotted module path, or `module.Class` | the function or method name |
+| Elixir | the module, `Outer.Inner`, or `Protocol.Type` for a `defimpl` | `name/arity` |
 
 Rename or move is a new entry. There is no identity matching across runs.
 
@@ -69,6 +72,8 @@ Rust counts `if`, loops, each `match` arm, `?`, and `&&` / `||`. `mod tests` is 
 
 Python counts `if`, `elif`, `for`, `while`, `except`, each `match` case, a comprehension filter, a conditional expression, and each `and` / `or`. Nested functions stay inside the enclosing function. Coverage is LCOV from `coverage.py`, running pytest when the project uses it and `unittest` otherwise. `coverage` and `pytest` are installed into the project's interpreter when they are missing.
 
+Elixir scores `.ex` files; `.exs` scripts, `deps`, and `_build` are skipped. Every clause of `def`, `defp`, `defmacro`, or `defmacrop` with the same name and arity is one entry named `name/arity`, and each clause of a multi-clause function counts as a decision, the same as a `case` clause. It also counts `if`, `unless`, each `and` / `or` / `&&` / `||` / `when` guard, each clause of `case`, `cond`, `receive`, and `receive ... after`, each `rescue` / `catch` / `with ... else` clause, each `<-` of `with`, each generator and filter of `for`, and each clause of a multi-clause `fn`. A bodiless head (a protocol callback or a default-argument head) is not a clause, and a definition generated inside another one, such as in a `quote`, stays with the enclosing definition. Coverage is LCOV line hits from each `.ex` file's nearest `mix.exs`.
+
 ## Coverage commands
 
 By default a run deletes the previous report for each language it is about to measure and regenerates it:
@@ -81,6 +86,7 @@ By default a run deletes the previous report for each language it is about to me
 | TypeScript | `npm run coverage`, or Vitest `--coverage`, or `npx c8 ... npm test` | `coverage/lcov.info` or `target/coverage/typescript/lcov.info` |
 | Rust | `cargo llvm-cov` or `cargo tarpaulin`, per Cargo package | `target/coverage/rust/lcov.info` |
 | Python | `coverage run` with pytest or unittest, then `coverage lcov` | `target/coverage/python/lcov.info` |
+| Elixir | `mix coveralls.lcov` when `mix.exs` names ExCoveralls; otherwise `mix test --cover --export-coverage crapper`, converted by `elixir_lcov.exs` | `target/coverage/elixir/lcov.info` |
 
 A missing tool or a failed test run scores that language at 0% and still writes the snapshot. Pass `--coverage-command` to replace those defaults with one command of your own. `--no-coverage` is the run that leaves coverage and CRAP as N/A.
 

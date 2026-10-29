@@ -70,7 +70,7 @@ def _clean_dir(path: Path) -> None:
         shutil.rmtree(path)
 
 
-_COVERAGE_DIRS = {"typescript", "rust", "go", "python"}
+_COVERAGE_DIRS = {"typescript", "rust", "go", "python", "elixir"}
 
 
 def _outside_language_dirs(coverage: Path, path: Path) -> bool:
@@ -593,4 +593,9 @@ def run_coverage(root: Path, files: list[Path], command: str | None) -> int:
         _cover_python(root, files)
     if "rust" in languages:
         _cover_rust(root, files)
+    if "elixir" in languages:
+        # Imported here: elixir_coverage builds on this module's helpers.
+        from crapper.elixir_coverage import cover_elixir
+
+        cover_elixir(root, files)
     return 0

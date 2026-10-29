@@ -20,6 +20,7 @@ EXTENSIONS = {
     ".cjs": "typescript",
     ".rs": "rust",
     ".py": "python",
+    ".ex": "elixir",
 }
 
 SKIP_DIRS = {
@@ -40,6 +41,9 @@ SKIP_DIRS = {
     "testdata",
     "__pycache__",
     ".clj-kondo",
+    "deps",
+    "_build",
+    ".elixir_ls",
 }
 
 TEST_DIRS = {"test", "tests", "spec", "specs", "__tests__"}

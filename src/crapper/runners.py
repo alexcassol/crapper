@@ -581,21 +581,27 @@ def run_coverage(root: Path, files: list[Path], command: str | None) -> int:
         return code
 
     languages = _languages_in(files)
-    if "clojure" in languages:
-        _cover_clojure(root)
-    if "java" in languages:
-        _cover_java(root, files)
-    if "go" in languages:
-        _cover_go(root, files)
-    if "typescript" in languages:
-        _cover_typescript(root, files)
-    if "python" in languages:
-        _cover_python(root, files)
-    if "rust" in languages:
-        _cover_rust(root, files)
-    if "elixir" in languages:
-        # Imported here: elixir_coverage builds on this module's helpers.
-        from crapper.elixir_coverage import cover_elixir
-
-        cover_elixir(root, files)
+    for language, cover in _language_runners():
+        if language in languages:
+            cover(root, files)
     return 0
+
+
+def _language_runners():
+    """Each language's coverage run, in the order they execute.
+
+    Built per call so a test can replace any runner on its module.
+    """
+
+    # Imported here: elixir_coverage builds on this module's helpers.
+    from crapper import elixir_coverage
+
+    return [
+        ("clojure", lambda root, _files: _cover_clojure(root)),
+        ("java", _cover_java),
+        ("go", _cover_go),
+        ("typescript", _cover_typescript),
+        ("python", _cover_python),
+        ("rust", _cover_rust),
+        ("elixir", elixir_coverage.cover_elixir),
+    ]
